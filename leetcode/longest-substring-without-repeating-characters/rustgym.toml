@@ -1,0 +1,4 @@
+name = "Longest Substring Without Repeating Characters"
+id = "3"
+platform = "leetcode"
+difficulty = "medium"
