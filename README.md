@@ -32,7 +32,7 @@ name = "Two Sum"
 id = "1"
 platform = "leetcode"
 difficulty = "easy"
-url = "https://leetcode.com/problems/two-sum/"
+url = "<optional url override>"
 ```
 
 ## Usage
