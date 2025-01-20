@@ -1,6 +1,7 @@
+use anyhow::Result;
+use glob::glob;
 use crate::config::ProblemConfig;
 use crate::constants::get_platform_patterns;
-use glob::glob;
 
 pub struct SearchCriteria {
     pub name: Option<String>,
@@ -9,7 +10,7 @@ pub struct SearchCriteria {
     pub platform: Option<String>,
 }
 
-pub fn find_problems(criteria: &SearchCriteria) -> anyhow::Result<Vec<ProblemConfig>> {
+pub fn find_problems(criteria: &SearchCriteria) -> Result<Vec<ProblemConfig>> {
     let mut problems = Vec::new();
 
     for pattern in get_platform_patterns() {
@@ -29,37 +30,34 @@ pub fn find_problems(criteria: &SearchCriteria) -> anyhow::Result<Vec<ProblemCon
 }
 
 fn matches_criteria(problem: &ProblemConfig, criteria: &SearchCriteria) -> bool {
-    // Check name
-    if let Some(name) = &criteria.name {
-        if !problem.name.to_lowercase().contains(&name.to_lowercase()) {
-            return false;
-        }
-    }
+    matches_name(problem, &criteria.name)
+        && matches_id(problem, &criteria.id)
+        && matches_difficulty(problem, &criteria.difficulty)
+        && matches_platform(problem, &criteria.platform)
+}
 
-    // Check ID
-    if let Some(id) = &criteria.id {
-        if !problem.id.to_lowercase().contains(&id.to_lowercase()) {
-            return false;
-        }
-    }
+fn matches_name(problem: &ProblemConfig, name: &Option<String>) -> bool {
+    name.as_ref().map_or(true, |n|
+        problem.name.to_lowercase().contains(&n.to_lowercase())
+    )
+}
 
-    // Check difficulty
-    if let Some(difficulty) = &criteria.difficulty {
-        if let Some(prob_diff) = &problem.difficulty {
-            if !prob_diff.to_lowercase().contains(&difficulty.to_lowercase()) {
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }
+fn matches_id(problem: &ProblemConfig, id: &Option<String>) -> bool {
+    id.as_ref().map_or(true, |i|
+        problem.id.to_lowercase().contains(&i.to_lowercase())
+    )
+}
 
-    // Check platform
-    if let Some(platform) = &criteria.platform {
-        if !problem.platform.to_lowercase().contains(&platform.to_lowercase()) {
-            return false;
-        }
+fn matches_difficulty(problem: &ProblemConfig, difficulty: &Option<String>) -> bool {
+    match (difficulty, &problem.difficulty) {
+        (Some(d), Some(pd)) => pd.to_lowercase().contains(&d.to_lowercase()),
+        (Some(_), None) => false,
+        (None, _) => true,
     }
+}
 
-    true
+fn matches_platform(problem: &ProblemConfig, platform: &Option<String>) -> bool {
+    platform.as_ref().map_or(true, |p|
+        problem.platform.to_lowercase().contains(&p.to_lowercase())
+    )
 }

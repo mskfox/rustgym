@@ -1,13 +1,11 @@
 use clap::{Parser, Subcommand};
-use colored::*;
-use std::process::Command;
+use anyhow::Result;
 
 mod config;
 mod constants;
 mod search;
-
-use crate::config::ProblemConfig;
-use crate::search::{find_problems, SearchCriteria};
+mod display;
+mod commands;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -43,7 +41,7 @@ enum Commands {
     },
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
@@ -52,100 +50,12 @@ fn main() -> anyhow::Result<()> {
             id,
             difficulty,
             platform,
-        } => {
-            let criteria = SearchCriteria {
-                name,
-                id,
-                difficulty,
-                platform,
-            };
+        } => commands::handle_search(name, id, difficulty, platform),
 
-            let problems = find_problems(&criteria)?;
-            display_problems(&problems);
-        }
         Commands::Test {
             name,
             id,
             platform,
-        } => {
-            let criteria = SearchCriteria {
-                name,
-                id,
-                difficulty: None,
-                platform,
-            };
-
-            let problems = find_problems(&criteria)?;
-
-            if problems.is_empty() {
-                println!("{}", "No problems found matching the criteria.".yellow());
-                return Ok(());
-            }
-
-            if problems.len() > 1 {
-                println!("{}", "\nMultiple problems found:".yellow());
-                display_problems(&problems);
-                println!("\n{}", "Please refine your search to test a specific problem.".yellow());
-                return Ok(());
-            }
-
-            let problem = &problems[0];
-            println!("\n{} Running tests for {} ({})",
-                "→".blue(),
-                problem.name.bold(),
-                problem.platform.cyan()
-            );
-
-            let output = Command::new("cargo")
-                .arg("test")
-                .arg("--package")
-                .arg(problem.path.file_stem().unwrap().to_str().unwrap())
-                .output()?;
-
-            if output.status.success() {
-                println!("\n{}", "Tests passed successfully!".green());
-            } else {
-                println!("\n{}", "Tests failed:".red());
-                println!("{}", String::from_utf8_lossy(&output.stderr));
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn display_problems(problems: &[ProblemConfig]) {
-    if problems.is_empty() {
-        println!("{}", "No problems found matching the criteria.".yellow());
-        return;
-    }
-
-    let problem_count = problems.len();
-    let problem_label = if problem_count == 1 { "problem" } else { "problems" };
-
-    println!("{}", format!("\nFound {} {}:", problem_count, problem_label).green());
-    for problem in problems {
-        println!(
-            "\n{} {} ({})",
-            "→".blue(),
-            problem.name.bold(),
-            problem.platform.cyan()
-        );
-        println!("  Path: {}", problem.path.display().to_string().underline());
-        println!("  ID: {}", problem.id);
-        if let Some(diff) = &problem.difficulty {
-            println!(
-                "  Difficulty: {}",
-                match diff.to_lowercase().as_str() {
-                    "easy" => diff.green(),
-                    "medium" => diff.yellow(),
-                    "hard" => diff.red(),
-                    _ => diff.normal(),
-                }
-            );
-        }
-        if let Some(url) = &problem.url {
-            println!("  URL: {}", url);
-        }
+        } => commands::handle_test(name, id, platform),
     }
 }
